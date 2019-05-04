@@ -1,119 +1,120 @@
-# -*- coding: utf-8 -*-
-
+"""
+Simplified chat demo for websockets.
+Authentication, error handling, etc are left as an exercise for the reader :)
 """
 
-Asteroids game
-
-"""
-
-import asyncio
+import logging
 import tornado.escape
 import tornado.ioloop
-import tornado.locks
+import tornado.options
 import tornado.web
+import tornado.websocket
 import os.path
 import uuid
 
-from tornado.options import define, options, parse_command_line
+from tornado.options import define, options
 
-define("port", default=8080, help="run on the given port", type=int)
-define("debug", default=True, help="run in debug mode")
+from config.settings import *
+from config.constants import *
+
+define("port", default=PORT, help="run on the given port", type=int)
 
 
-class MessageBuffer(object):
+class Application(tornado.web.Application):
     def __init__(self):
-        # cond is notified whenever the message cache is updated
-        self.cond = tornado.locks.Condition()
-        self.cache = []
-        self.cache_size = 200
-
-    def get_messages_since(self, cursor):
-        """Returns a list of messages newer than the given cursor.
-        ``cursor`` should be the ``id`` of the last message received.
-        """
-        results = []
-        for msg in reversed(self.cache):
-            if msg["id"] == cursor:
-                break
-            results.append(msg)
-        results.reverse()
-        return results
-
-    def add_message(self, message):
-        self.cache.append(message)
-        if len(self.cache) > self.cache_size:
-            self.cache = self.cache[-self.cache_size :]
-        self.cond.notify_all()
-
-
-# Making this a non-singleton is left as an exercise for the reader.
-global_message_buffer = MessageBuffer()
+        handlers = [(r"/", MainHandler), (r"/gamesocket", GameSocketHandler)]
+        settings = dict(
+            cookie_secret="asdfkj23raslfk23r2",
+            template_path=os.path.join(os.path.dirname(__file__), "templates"),
+            static_path=os.path.join(os.path.dirname(__file__), "static"),
+            xsrf_cookies=True,
+        )
+        super(Application, self).__init__(handlers, **settings)
 
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.render("index.html", messages=global_message_buffer.cache)
+        self.render("index.html", messages=GameSocketHandler.cache)
 
 
-class MessageNewHandler(tornado.web.RequestHandler):
-    """Post a new message to the chat room."""
+class GameSocketHandler(tornado.websocket.WebSocketHandler):
+    waiters = set()
+    cache = {"players": {}, "bullets": []}
 
-    def post(self):
-        message = {"id": str(uuid.uuid4()), "body": self.get_argument("body")}
-        # render_string() returns a byte string, which is not supported
-        # in json, so we must convert it to a character string.
-        message["html"] = tornado.escape.to_unicode(
-            self.render_string("message.html", message=message)
+    def get_compression_options(self):
+        # Non-None enables compression with default options.
+        return {}
+
+    def open(self):
+        GameSocketHandler.waiters.add(self)
+
+        # Send back the game settings
+        self.write_message(
+            {
+                "status": "success",
+                "state": self.cache,
+                "settings": {
+                    "room_friction": 1,
+                    "player_max_speed": 5,
+                    "player_acceleration": 0.5,
+                    "player_rotation_speed": 25,
+                    "bullet_speed": 20,
+                    "max_bullets_per_player": 1,
+                    "bullet_lifespan": 3,
+                },
+            }
         )
-        if self.get_argument("next", None):
-            self.redirect(self.get_argument("next"))
-        else:
-            self.write(message)
-        global_message_buffer.add_message(message)
 
+    def on_close(self):
+        GameSocketHandler.waiters.remove(self)
 
-class MessageUpdatesHandler(tornado.web.RequestHandler):
-    """Long-polling request for new messages.
-    Waits until new messages are available before returning anything.
-    """
+    @classmethod
+    def update_cache(cls, data):
+        message_type = data.get("message_type", None)
+        if message_type == PLAYER_POSITION:
+            for p in cls.cache.get("players"):
+                if p.get("id") == data.get("id"):
+                    p["x"] = data.get("x")
+                    p["y"] = data.get("y")
+                    p["direction"] = data.get("direction")
+                    p["velocity"] = data.get("velocity")
+        elif message_type == PLAYER_SHOOT:
+            cls.cache["bullets"].append(
+                {
+                    "player_id": data.get("player_id"),
+                    "startx": data.get("startx"),
+                    "starty": data.get("starty"),
+                    "direction": data.get("direction"),
+                    "speed": BULLET_SPEED,
+                }
+            )
 
-    async def post(self):
-        cursor = self.get_argument("cursor", None)
-        messages = global_message_buffer.get_messages_since(cursor)
-        while not messages:
-            # Save the Future returned here so we can cancel it in
-            # on_connection_close.
-            self.wait_future = global_message_buffer.cond.wait()
+    @classmethod
+    def send_updates(cls, data):
+        logging.info("sending message to %d waiters", len(cls.waiters))
+        for waiter in cls.waiters:
             try:
-                await self.wait_future
-            except asyncio.CancelledError:
-                return
-            messages = global_message_buffer.get_messages_since(cursor)
-        if self.request.connection.stream.closed():
-            return
-        self.write(dict(messages=messages))
+                waiter.write_message({"state": cls.cache})
+            except:
+                logging.error("Error sending message", exc_info=True)
 
-    def on_connection_close(self):
-        self.wait_future.cancel()
+    def on_message(self, message):
+        logging.info("got message %r", message)
+        parsed = tornado.escape.json_decode(message)
+
+        body = {"id": str(uuid.uuid4()), "data": parsed["data"]}
+
+        GameSocketHandler.update_cache(body)
+        GameSocketHandler.send_updates(body)
 
 
 def main():
-    parse_command_line()
-    app = tornado.web.Application(
-        [
-            (r"/", MainHandler),
-            (r"/a/message/new", MessageNewHandler),
-            (r"/a/message/updates", MessageUpdatesHandler),
-        ],
-        cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
-        template_path=os.path.join(os.path.dirname(__file__), "templates"),
-        static_path=os.path.join(os.path.dirname(__file__), "static"),
-        xsrf_cookies=True,
-        debug=options.debug,
-    )
+    tornado.options.parse_command_line()
+    app = Application()
     app.listen(options.port)
     tornado.ioloop.IOLoop.current().start()
 
 
 if __name__ == "__main__":
+    print("Starting server on port {}".format(PORT))
     main()
