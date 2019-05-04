@@ -11,6 +11,7 @@ import tornado.web
 import tornado.websocket
 import os.path
 import uuid
+import random
 
 from tornado.options import define, options
 
@@ -47,13 +48,22 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         GameSocketHandler.waiters.add(self)
-
+        players = self.cache.get("players")
+        new_player_id = str(uuid.uuid4())
+        new_player = {
+            "x": random.randint(0, 800),
+            "y": random.randint(0, 600),
+            "direction": random.randint(0, 360),
+            "velocity": 0,
+        }
+        players[new_player_id] = new_player
         # Send back the game settings
         self.write_message(
             {
                 "status": "success",
                 "state": self.cache,
                 "settings": {
+                    "player_id": new_player_id,
                     "room_friction": 1,
                     "player_max_speed": 5,
                     "player_acceleration": 0.5,
@@ -69,11 +79,14 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
         GameSocketHandler.waiters.remove(self)
 
     @classmethod
-    def update_cache(cls, data):
-        message_type = data.get("message_type", None)
+    def update_cache(cls, message):
+        message_type = message.get("message_type", None)
+        data = message.get("data", None)
+        if data is None:
+            return
         if message_type == PLAYER_POSITION:
-            for p in cls.cache.get("players"):
-                if p.get("id") == data.get("id"):
+            for pid, p in cls.cache.get("players").items():
+                if pid == data.get("id"):
                     p["x"] = data.get("x")
                     p["y"] = data.get("y")
                     p["direction"] = data.get("direction")
@@ -102,10 +115,9 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
         logging.info("got message %r", message)
         parsed = tornado.escape.json_decode(message)
 
-        body = {"id": str(uuid.uuid4()), "data": parsed["data"]}
-
-        GameSocketHandler.update_cache(body)
-        GameSocketHandler.send_updates(body)
+        # body = {"id": str(uuid.uuid4()), "data": parsed["data"]}
+        GameSocketHandler.update_cache(parsed)
+        GameSocketHandler.send_updates(parsed)
 
 
 def main():
