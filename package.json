@@ -1,0 +1,23 @@
+{
+  "name": "asteriods-io-online",
+  "version": "0.1.0",
+  "description": "aseriods online!",
+  "main": "index.js",
+  "scripts": {
+      "build": "webpack",
+      "start": "webpack --watch & live-server --entry-file=dist/index.html --port=8085"
+  },
+  "contributors": [
+      "Brady Endres",  
+      "Tyler Nickerson"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.1",
+    "phaser": "^3.16.2",
+    "ts-loader": "^5.4.5",
+    "typescript": "^3.4.5",
+    "webpack": "^4.30.0",
+    "webpack-cli": "^3.3.1"
+  }
+}
