@@ -87,6 +87,7 @@ var ship;
 var lastFired;
 var currentSpeed = 0;
 let active = true;
+let lastPositionUpdate;
 
 function create(): void {
   // let playerBullets = this.physics.add.group({ classType: Bullet, runChildUpdate: true });
@@ -140,6 +141,12 @@ function create(): void {
 }
 
 function update(time, delta): void {
+
+  if (time > lastPositionUpdate) {
+    // Send position update
+  }
+  lastPositionUpdate += 5;
+  
   if (cursors.left.isDown)
   {
       ship.setAngularVelocity(-300);
