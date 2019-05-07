@@ -76,7 +76,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
             {
                 "status": "success",
                 "state": self.cache,
-                "type": "INITIAL_STATE",
+                "message_type": "INITIAL_STATE",
                 "settings": {
                     "player_id": new_player_id,
                     "room_friction": 1,
@@ -93,7 +93,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
             if waiter == self:
                 continue
             try:
-                waiter.write_message({"type": PLAYER_JOINED, "new_player": new_player})
+                waiter.write_message({"message_type": PLAYER_JOINED, "new_player": new_player})
             except:
                 logging.error("Error sending message", exc_info=True)
 
@@ -103,7 +103,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 
         for waiter in self.waiters:
             try:
-                waiter.write_message({"type": PLAYER_LEFT, "player_id": self.player_id})
+                waiter.write_message({"message_type": PLAYER_LEFT, "player_id": self.player_id})
             except:
                 logging.error("Error sending message", exc_info=True)
 
@@ -145,10 +145,17 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
         for waiter in cls.waiters:
             try:
                 waiter.write_message(
-                    {"state": cls.cache, "type": data.get("message_type")}
+                    {"state": cls.cache, "messate_type": data.get("message_type")}
                 )
             except:
                 logging.error("Error sending message", exc_info=True)
+
+    def forward_message(self, message):
+        for waitor in self.waiters:
+            try:
+                waiter.write_message(messaage)
+            except:
+                logging.error("Error forwarding message", exc_info=True)
 
     def on_message(self, message):
         print("on message")
@@ -157,7 +164,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 
         # body = {"id": str(uuid.uuid4()), "data": parsed["data"]}
         GameSocketHandler.update_cache(parsed)
-        GameSocketHandler.send_updates(parsed)
+        GameSocketHandler.forward_message(parsed)
 
 
 def main():

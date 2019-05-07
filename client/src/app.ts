@@ -109,8 +109,8 @@ function create(): void {
     ws.onmessage = (e) => {
     console.log("ws.onmessage")
       let data = JSON.parse(e.data)
-      console.log(data.type)
-      if (data.type == "INITIAL_STATE") {
+      console.log(data.message_type)
+      if (data.message_type == "INITIAL_STATE") {
         player_id = data.settings.player_id
 
         ship.x = data.state.players[player_id].x
@@ -131,7 +131,7 @@ function create(): void {
             // enemyShips[key].body.acceleration = p.acceleration
           }
         }
-      } else if (data.type == "PLAYER_JOINED") {
+      } else if (data.message_type == "PLAYER_JOINED") {
         console.log("Player Joined!")
         console.log(data)
         let new_player = data.new_player
@@ -143,12 +143,12 @@ function create(): void {
         enemyShips[new_player_id].setMaxVelocity(200);
 
         enemyShips[new_player_id].rotation = new_player.rotation
-      } else if (data.type == "PLAYER_LEFT") {
+      } else if (data.message_type == "PLAYER_LEFT") {
         console.log("Player left!")
         console.log(data)
-      } else if (data.type == "PLAYER_POSITION") {
+      } else if (data.message_type == "PLAYER_POSITION") {
         // for (let i=0; i<data.)
-      } else if (data.type == "PLAYER_KEY") {
+      } else if (data.message_type == "PLAYER_KEY") {
         console.log("player key event")
         console.log(data.state.players)
         for (let other_id in data.state.players) {
@@ -269,7 +269,7 @@ function create(): void {
 }
 
 function send_key(key, pressed) {
-  var jsn = JSON.stringify({
+  var json = JSON.stringify({
     "message_type": "PLAYER_KEY",
     "data": {
       "id": player_id,
@@ -282,7 +282,7 @@ function send_key(key, pressed) {
     }
   })
   // send
-  ws.send(jsn)
+  ws.send(json)
 }
 
 function update(time, delta): void {
