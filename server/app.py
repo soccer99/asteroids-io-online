@@ -93,7 +93,9 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
             if waiter == self:
                 continue
             try:
-                waiter.write_message({"message_type": PLAYER_JOINED, "new_player": new_player})
+                waiter.write_message(
+                    {"message_type": PLAYER_JOINED, "new_player": new_player}
+                )
             except:
                 logging.error("Error sending message", exc_info=True)
 
@@ -103,7 +105,9 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 
         for waiter in self.waiters:
             try:
-                waiter.write_message({"message_type": PLAYER_LEFT, "player_id": self.player_id})
+                waiter.write_message(
+                    {"message_type": PLAYER_LEFT, "player_id": self.player_id}
+                )
             except:
                 logging.error("Error sending message", exc_info=True)
 
