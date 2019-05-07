@@ -1,5 +1,6 @@
 .idea/
 node_modules/
 package-lock.json
-dist/*.js
+client/dist/*.js
 .DS_Store
+
