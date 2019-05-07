@@ -151,9 +151,9 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
                 logging.error("Error sending message", exc_info=True)
 
     def forward_message(self, message):
-        for waitor in self.waiters:
+        for waiter in self.waiters:
             try:
-                waiter.write_message(messaage)
+                waiter.write_message(message)
             except:
                 logging.error("Error forwarding message", exc_info=True)
 
@@ -164,7 +164,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 
         # body = {"id": str(uuid.uuid4()), "data": parsed["data"]}
         GameSocketHandler.update_cache(parsed)
-        GameSocketHandler.forward_message(parsed)
+        self.forward_message(parsed)
 
 
 def main():
