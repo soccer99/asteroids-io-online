@@ -133,7 +133,6 @@ function create(): void {
         }
       } else if (data.message_type == "PLAYER_JOINED") {
         console.log("Player Joined!");
-        console.log(data);
         let new_player = data.new_player;
         let new_player_id = new_player.id;
         enemyShips[new_player_id] = this.physics.add.image(
@@ -154,29 +153,20 @@ function create(): void {
         // for (let i=0; i<data.)
       } else if (data.message_type == "PLAYER_KEY") {
         console.log("player key event");
-        console.log(data.state.players);
-        for (let other_id in data.state.players) {
-          if (other_id != player_id) {
-            let p = data.state.players[other_id];
-            enemyShips[other_id].x = p.x;
-            enemyShips[other_id].y = p.y;
-            enemyShips[other_id].rotation = p.rotation;
-            // enemyShips[other_id].body.acceleration = p.acceleration
-
-            if (p.keys["left"]) {
-              enemyShips[other_id].setAngularVelocity(-300);
-            } else if (p.keys["right"]) {
-              enemyShips[other_id].setAngularVelocity(300);
-            } else {
-              enemyShips[other_id].setAngularVelocity(0);
-            }
-
-            enemyAcceleration[other_id] = p.keys["up"];
-            // if (p.keys["up"] == true) {
-            // } else if (p.keys["up"] == false) {
-            //   enemyAcceleration[other_id] = p.keys["up"]
-            // }
-          }
+        let p = data.data;
+        if (p.id == player_id) return;
+        enemyShips[p.id].x = p.x;
+        enemyShips[p.id].y = p.y;
+        enemyShips[p.id].rotation = p.rotation;
+        if (p.key == "left" && p.pressed) {
+          enemyShips[p.id].setAngularVelocity(-300);
+        } else if (p.key == "right" && p.pressed) {
+          enemyShips[p.id].setAngularVelocity(300);
+        } else {
+          enemyShips[p.id].setAngularVelocity(0);
+        }
+        if (p.key == "up") {
+          enemyAcceleration[p.id] = p.pressed;
         }
       }
     };
