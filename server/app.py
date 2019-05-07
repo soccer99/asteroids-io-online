@@ -43,7 +43,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
     cache = {"players": {}, "bullets": []}
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs) # :)
+        super().__init__(*args, **kwargs)  # :)
         self.player_id = None
 
     def get_compression_options(self):
@@ -68,11 +68,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
             "y": random.randint(0, 600),
             "rotation": random.randint(0, 360),
             "acceleration": 0,
-            "keys": {
-                "up": False,
-                "left": False,
-                "right": False
-            }
+            "keys": {"up": False, "left": False, "right": False},
         }
         players[new_player_id] = new_player
         # Send back the game settings
@@ -97,12 +93,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
             if waiter == self:
                 continue
             try:
-                waiter.write_message(
-                    {
-                        "type": PLAYER_JOINED,
-                        "new_player": new_player,
-                    }
-                )
+                waiter.write_message({"type": PLAYER_JOINED, "new_player": new_player})
             except:
                 logging.error("Error sending message", exc_info=True)
 
@@ -112,12 +103,7 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
 
         for waiter in self.waiters:
             try:
-                waiter.write_message(
-                    {
-                        "type": PLAYER_LEFT,
-                        "player_id": self.player_id,
-                    }
-                )
+                waiter.write_message({"type": PLAYER_LEFT, "player_id": self.player_id})
             except:
                 logging.error("Error sending message", exc_info=True)
 
@@ -158,7 +144,9 @@ class GameSocketHandler(tornado.websocket.WebSocketHandler):
         logging.info("sending message to %d waiters", len(cls.waiters))
         for waiter in cls.waiters:
             try:
-                waiter.write_message({"state": cls.cache, "type": data.get("message_type")})
+                waiter.write_message(
+                    {"state": cls.cache, "type": data.get("message_type")}
+                )
             except:
                 logging.error("Error sending message", exc_info=True)
 
